@@ -16,7 +16,7 @@ package logging
 
 import (
     "sync"
-    "syncParam"
+    "DutyRoster/syncParam"
     "fmt"
     "runtime"
 )

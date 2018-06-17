@@ -21,9 +21,9 @@ import (
     "syscall"
     "flag"
     "path/filepath"
-    "config"
-    "logging"
-    "syncParam"
+    "DutyRoster/config"
+    "DutyRoster/logging"
+    "DutyRoster/syncParam"
 )
 
 

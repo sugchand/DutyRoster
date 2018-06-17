@@ -18,7 +18,7 @@ import (
     "fmt"
     "os"
     "log"
-    "config"
+    "DutyRoster/config"
     "sync"
     "io"
 )

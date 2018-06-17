@@ -1,6 +1,6 @@
 GO ?= go
 GOPATH := $(CURDIR)
-GOSRCPATH := ./src
+GOSRCPATH := ./src/DutyRoster
 GOBINPATH := ./bin
 GOOUTPUTBIN := $(GOBINPATH)/DutyRoster
 SHELL := /bin/bash

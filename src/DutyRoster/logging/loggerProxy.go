@@ -62,7 +62,7 @@ func (logProxy *loggerProxy)startLoggerListner() {
 }
 
 func (logProxy *loggerProxy)initloggerProxy() {
-    LOG_CHANNEL_SIZE = 2500
+    LOG_CHANNEL_SIZE = 5000
     logProxyOnce.Do(func() {
             if logProxy.logObj == nil {
                 logProxy.logObj = getLoggerInstance()
@@ -73,6 +73,7 @@ func (logProxy *loggerProxy)initloggerProxy() {
             logProxy.startLoggerListner()
         })
 }
+
 // Function to read the caller function name from the function stack.
 func (logProxy *loggerProxy)getCallerName() string{
     pc := make([]uintptr, 1)

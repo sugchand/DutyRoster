@@ -23,7 +23,7 @@ import (
 // For eg: logging, loggingProxy and so on. Update this function to let
 // application to use right logging implementation on different use case.
 // By default application uses loggingproxy implementation for the logging.
-func GetAppLoggerObj()LoggingInterface {
+func GetAppLoggerObj() LoggingInterface {
     // Can use different implementation if needed.
     return getLoggerProxyInstance()
 }

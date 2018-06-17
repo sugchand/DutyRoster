@@ -21,6 +21,7 @@ ifndef DEP
 $(error "dep is not available please install go dep package manager")
 endif
 	-@(cd $(GOSRCPATH);$(DEP) status 2> /dev/null)
-	@echo -e " Run 'dep ensure' in $(GOSRCPATH) to install missing third party packages "
+	@echo -e "\n\tSet 'GOPATH' to '$(GOPATH)'"
+	@echo -e "\tRun 'dep ensure' in $(GOSRCPATH) to install missing third party packages\n"
 	$(GO) build -o $(GOOUTPUTBIN) $(GOSRCPATH)
 	@echo -e "\n\t**** RESULT : $$? : Build completed!!! ****\n\t**** Binary is at $$PWD/bin ****"

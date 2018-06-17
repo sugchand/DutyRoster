@@ -21,6 +21,8 @@ package syncParam
 //******************************************************************************
 import (
     "sync"
+    "sync/atomic"
+    "fmt"
 )
 
 type syncparams struct {
@@ -28,6 +30,9 @@ type syncparams struct {
     appWaitGroups sync.WaitGroup
     // sync param for logproxy goroutine.
     do_log_exit chan bool
+    // atomic counter to keep track of active goroutines.
+    // Use Atomic ops to make sure synchronization.
+    goroutineCnt int64
 }
 
 var appSync = new(syncparams)
@@ -49,6 +54,7 @@ func GetAppSyncObj() *syncparams {
 
 // Exit the logger routine by sending the exit channel message to logger
 // goroutine.
+// Return true when message is sent successfully/ false otherwise.
 func (syncObj *syncparams)ExitloggerRoutine() {
     syncObj.do_log_exit <- true
 }
@@ -69,23 +75,50 @@ func (syncObj *syncparams)IsLoggerExitSignaled() bool{
 // It allows the bookkeeping of currnetly running goroutines in the application.
 func (syncObj *syncparams)AddRoutineInWaitGroup() {
     syncObj.appWaitGroups.Add(1)
+    atomic.AddInt64(&syncObj.goroutineCnt, 1)
 }
 
 // Call when exiting the goroutine after its executing.
 // It allows the book-keeping of active gorotuines in the application.
+// NEVER INVOKE ExitRoutineInWaitGroup without AddRoutineInWaitGroup
 func (syncObj *syncparams)ExitRoutineInWaitGroup() {
     syncObj.appWaitGroups.Done()
+    // For simplicity, we assume done will not get called before add.
+    atomic.AddInt64(&syncObj.goroutineCnt, -1)
 }
 
 // Function to wait for all the goroutines to complete execution.
 // ONLY INVOKED FROM MAIN THREAD AS A LAST STATEMENT.
 func (syncObj *syncparams)JoinAllRoutines() {
     syncObj.appWaitGroups.Wait()
+
 }
 
 // Function that signal exit message to all gorutines and wait for the
 // routines to coalesce.
 func (syncObj *syncparams)DestroyAllRoutines() {
+    cnt := atomic.LoadInt64(&syncObj.goroutineCnt)
+    if cnt <= 0 {
+        return
+    }
     //Exit logger routine
     syncObj.ExitloggerRoutine()
+}
+
+// Application panic.
+func (syncObj *syncparams)PanicApp(msgfmt string, args ...interface{}) {
+    fmt.Println("\n\n APPLICATION IS PANICKED \n\n")
+    syncObj.DestroyAllRoutines()
+    panicErr := fmt.Sprintf(msgfmt, args...)
+    // System is panicked, hence mark all goroutine as done unconditionally, to
+    // exit the application.
+    // No lock for these operation as we assume there are no threads are now
+    // operating at waitgroup. It is very unlikely a new thread is created/
+    // deleted at this stage.
+    cnt := atomic.LoadInt64(&syncObj.goroutineCnt)
+    var i int64
+    for i = 0; i < cnt ; i++ {
+        syncObj.ExitRoutineInWaitGroup()
+    }
+    panic(panicErr)
 }

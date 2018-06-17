@@ -24,12 +24,13 @@ import (
     "DutyRoster/config"
     "DutyRoster/logging"
     "DutyRoster/syncParam"
+    "DutyRoster/datastore"
 )
 
 
 //function to read configuration json file and convert it to configuration
 //object.
-func readConfig() {
+func readConfig() error{
     var err error
     var cfgAbsPath string
     var cfgfile *string
@@ -43,19 +44,25 @@ func readConfig() {
     }
     cfgAbsPath, err = filepath.Abs(*cfgfile)
     if (err != nil) {
-        fmt.Print("Failed to open Config file, Cannot start application")
-        return
+        fmt.Print("\nFailed to open Config file, Cannot start application\n")
+        return err
     }
-    config.LoadConfigSingleton(cfgAbsPath)
+    return config.LoadConfigSingleton(cfgAbsPath)
 }
 
 //Function to setup the logging for application.
-func setuplogging() {
+func setuplogging() error{
     var appLogObj = logging.GetAppLoggerObj()
     appLogObj.Trace("test")
     appLogObj.Info("%s info test %d", "num", 1)
+    return nil
 }
 
+//Set up the backend datastore for data operations.
+func setupDataStore() error {
+    dbObj := datastore.GetDataStoreObj()
+    return dbObj.CreateDBConnection()
+}
 func printHelp() {
     helpstr := "\n\t DutyRoster Server Application" +
     "\n\t An application to schedule work shifts for employeess in an org." +
@@ -67,6 +74,7 @@ func printHelp() {
 }
 
 func main() {
+    var err error
     if len(os.Args) <= 1 {
         //No arguments provided, print helpstring.
         printHelp()
@@ -78,9 +86,18 @@ func main() {
     syncObj := syncParam.GetAppSyncObj()
     // Wait for all routines to coalesce
     defer syncObj.JoinAllRoutines()
-    readConfig()
-    setuplogging()
-
+    err = readConfig()
+    if err != nil {
+        syncObj.PanicApp("Exiting the application : %s", err.Error())
+    }
+    err = setuplogging()
+    if err != nil {
+        syncObj.PanicApp("Exiting the application : %s", err.Error())
+    }
+    err = setupDataStore()
+    if err != nil {
+        syncObj.PanicApp("Exiting the application : %s", err.Error())
+    }
     // Exit the main thread on Ctrl C 
     fmt.Print("\n\n\n *** Press Ctrl+C to Exit *** \n\n\n")
     exitsignal := make(chan os.Signal, 1)

@@ -55,7 +55,7 @@ func (logger *Logging)logInitSingleton() {
         stdoutHandler = os.Stdout
         conf := config.GetConfigInstance()
         if conf == nil {
-            fmt.Println("\nERROR: Cannot read configfile object")
+            fmt.Println("\nERROR: Cannot read configfile object\n")
             return
         }
         logger.currloglevel = logger.getloglevelInt(conf.Logging.LogLevel)

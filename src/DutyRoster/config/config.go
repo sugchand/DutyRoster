@@ -30,6 +30,23 @@ type Config struct {
         // Set filepath to empty to output logs only to stdout.
         FilePath string `json:"filepath"`
     }`json:"logging"`
+    DB struct {
+        //Name of DB driver, Only SQLLITE is supported now.
+        Driver string `json:"driver"`
+        //Path of DB to use in application., eg: /tmp/test.db
+        Dbpath string `json:"dbpath"`
+        //Ip address of Host where DB server is running.
+        Ipaddr string `json:"ipaddr"`
+        //Port at which DB server is listening for incoming connections.
+        Port string `json:"port"`
+        //Username if needed to connect to DB.
+        Uname string `json:"uname"`
+        //Password to connect to DB
+        Pwd string `json:"pwd"`
+        //Transport protocol to connect to db, can be tcp/udp
+        Transport string `json:"transport`
+    }`json:"db"`
+
 }
 
 var conf = new(Config)
@@ -39,17 +56,25 @@ var once sync.Once
 // Only one configuration object created for entire application.
 // Any configuration change in the json file might need to restart the
 // application.
-func LoadConfigSingleton(configfile string) {
+func LoadConfigSingleton(configfile string) error {
+    var err error
+    err = nil
     once.Do(func() {
-        fp, err := os.Open(configfile)
+        var fp *os.File
+        fp, err = os.Open(configfile)
         defer fp.Close()
         if err != nil {
             fmt.Printf("\nERROR: %s\n", err.Error())
             return
         }
         jsonParser := json.NewDecoder(fp)
-        jsonParser.Decode(conf)
+        err = jsonParser.Decode(conf)
+        if err != nil {
+            fmt.Printf("\nERROR: Failed to parse JSON file, Invalid syntax\n")
+            return
+        }
     })
+    return err
 }
 
 // Function to return config singleton instance.

@@ -52,16 +52,18 @@ func readConfig() error{
 
 //Function to setup the logging for application.
 func setuplogging() error{
-    var appLogObj = logging.GetAppLoggerObj()
-    appLogObj.Trace("test")
-    appLogObj.Info("%s info test %d", "num", 1)
+    logging.GetAppLoggerObj()
     return nil
 }
 
 //Set up the backend datastore for data operations.
 func setupDataStore() error {
     dbObj := datastore.GetDataStoreObj()
-    return dbObj.CreateDBConnection()
+    err := dbObj.CreateDBConnection()
+    if err != nil {
+        return err
+    }
+    return dbObj.CreateDataStoreTables()
 }
 func printHelp() {
     helpstr := "\n\t DutyRoster Server Application" +

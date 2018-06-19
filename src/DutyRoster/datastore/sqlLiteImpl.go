@@ -17,14 +17,17 @@ package datastore
 import (
     "sync"
     "fmt"
+    "path/filepath"
+    _ "github.com/mattn/go-sqlite3"
+    "github.com/jmoiron/sqlx"
     "DutyRoster/logging"
     "DutyRoster/config"
     "DutyRoster/errorset"
 )
 
 type sqlLiteDataStore struct {
-    rolesObj *roles
     dblogger logging.LoggingInterface
+    DBConn *sqlx.DB
 }
 
 var dbOnce sync.Once
@@ -32,7 +35,9 @@ var sqlObj = new(sqlLiteDataStore)
 
 //Create a sql connection and store in the datastore object.
 // Return '0' on success and errorcode otherwise.
+// It is advised to make single connection in entire application.
 func (sqlds *sqlLiteDataStore)CreateDBConnection() error{
+    var err error
     dbconfig := config.GetConfigInstance()
     dbDriver := dbconfig.DB.Driver
     dbFile := dbconfig.DB.Dbpath
@@ -43,12 +48,32 @@ func (sqlds *sqlLiteDataStore)CreateDBConnection() error{
         return fmt.Errorf("%s",
             errorset.ERROR_TYPES[errorset.NULL_DB_CONFIG_PARAMS])
     }
-    if dbDriver != "sqllite3" {
+    if dbDriver != "sqlite3" {
         //Only sqllite3 driver can be handled here.
         sqlds.dblogger.Error("Failed to start application, Invalid driver :%s",
                              dbDriver)
         return fmt.Errorf("%s", errorset.ERROR_TYPES[errorset.INVALID_DB_DRIVER])
     }
+    dbFile, err = filepath.Abs(dbFile)
+    if err != nil {
+        sqlds.dblogger.Error("Failed to open DB file, %s", err.Error())
+        return err
+    }
+    var dbHandle *sqlx.DB
+    dbHandle, err = sqlx.Open(dbDriver, dbFile)
+    if err != nil {
+        sqlds.dblogger.Error("Failed to connect DB %s", err.Error())
+        return err
+    }
+    sqlds.DBConn = dbHandle
+    return nil
+}
+
+//Create all the sqllite tables for DutyRoster application.
+func (sqlds *sqlLiteDataStore)CreateDataStoreTables() error {
+    //Create Role table.
+    roletable := new(sqlroles)
+    roletable.createRoleTable(sqlds.DBConn)
     return nil
 }
 

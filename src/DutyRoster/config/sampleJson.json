@@ -4,7 +4,7 @@
         "filepath": ""
     },
     "db": {
-        "driver": "sqllite3",
+        "driver": "sqlite3",
         "dbpath": "/tmp/dutyroster.db",
         "ipaddr": "",
         "port": "",

@@ -126,4 +126,3 @@ func getLoggerProxyInstance() *loggerProxy{
     gblLogProxy.initloggerProxy()
     return gblLogProxy
 }
-

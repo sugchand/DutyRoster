@@ -28,10 +28,16 @@ import (
 const (
     NULL_DB_CONFIG_PARAMS = iota
     INVALID_DB_DRIVER
+    DB_TABLE_CREATE_FAILED
+    DB_TRANSACTION_FAILED
 )
 
 var ERROR_TYPES = []string{
     //NULL_DB_CONFIG_PARAMS
     "DB params on the configuration is empty/invalid",
     //INVALID_DB_DRIVER
-    "INVALID DB driver in configuration"}
+    "INVALID DB driver in configuration",
+    //DB_TABLE_CREATE_FAILED
+    "Failed to create table in DB",
+    //DB_TRANSACTION_FAILED
+    "Failed to perform transaction on DB"}

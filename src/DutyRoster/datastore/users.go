@@ -15,11 +15,17 @@
 package datastore
 
 import (
-
 )
 
 type users struct {
     userid string
     emailid string
-    
+    hashpwd string
+    mobileno uint64
+    //store in bitfields as DD|MM|YYYY
+    dob uint64
+    //Anonymous org and roles strcture.
+    org
+    roles
 }
+

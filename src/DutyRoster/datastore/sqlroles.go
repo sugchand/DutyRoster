@@ -23,7 +23,7 @@ var (
     //Check if table is exist in the DB
     roletableExist = fmt.Sprintf("SELECT 1 FROM %s LIMIT 1;", ROLE_TABLE_NAME_STR)
     //Create a table roles
-    roleschema = fmt.Sprintf("CREATE TABLE %s (%s UNSIGNED BIG INT NOT NULL PRIMARY KEY);",
+    roleschema = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s UNSIGNED BIG INT NOT NULL PRIMARY KEY);",
                     ROLE_TABLE_NAME_STR, ROLE_TYPE_NAME_STR)
     //Create a role entry in table roles
     roleCreate = fmt.Sprintf("INSERT INTO %s (%s) VALUES (?)", ROLE_TABLE_NAME_STR,
@@ -59,6 +59,12 @@ func (rl *sqlroles)createRoleTable(conn *sqlx.DB) error{
 func (rl *sqlroles)createRoleEntry(conn *sqlx.DB) error {
     var err error
     log := logging.GetAppLoggerObj()
+    //Check if roleBit is valid before creating it in DB
+    if rl.IsRoleBitsetValid() == false {
+        log.Error("Invalid role bit, cannot create entry in role table")
+        return fmt.Errorf("%s",
+                        errorset.ERROR_TYPES[errorset.INVALID_PARAM])
+    }
     //role table has only one entry and its the primary key, duplication of
     // entry will cause error in DB insert. We are checking if entry is present
     // in DB to avoid doing trial and error.

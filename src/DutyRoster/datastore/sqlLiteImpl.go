@@ -74,6 +74,9 @@ func (sqlds *sqlLiteDataStore)CreateDataStoreTables() error {
     //Create Role table.
     roletable := new(sqlroles)
     roletable.createRoleTable(sqlds.DBConn)
+    //Create Org table
+    orgtable := new(sqlorg)
+    orgtable.createOrgTable(sqlds.DBConn)
     return nil
 }
 

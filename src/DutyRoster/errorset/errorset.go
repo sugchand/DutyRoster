@@ -26,13 +26,20 @@ import (
 //******************************************************************************
 
 const (
-    NULL_DB_CONFIG_PARAMS = iota
+    INVALID_PARAM = iota
+    TRY_AGAIN
+    NULL_DB_CONFIG_PARAMS
     INVALID_DB_DRIVER
     DB_TABLE_CREATE_FAILED
     DB_TRANSACTION_FAILED
+    DB_RECORD_NOT_FOUND
 )
 
 var ERROR_TYPES = []string{
+    //INVALID_PARAM
+    "Invalid input parameters",
+    //TRY_AGAIN
+    "Operation failed, Try again.",
     //NULL_DB_CONFIG_PARAMS
     "DB params on the configuration is empty/invalid",
     //INVALID_DB_DRIVER
@@ -40,4 +47,6 @@ var ERROR_TYPES = []string{
     //DB_TABLE_CREATE_FAILED
     "Failed to create table in DB",
     //DB_TRANSACTION_FAILED
-    "Failed to perform transaction on DB"}
+    "Failed to perform transaction on DB",
+    //DB_RECORD_NOT_FOUND
+    "Record not found in DB"}

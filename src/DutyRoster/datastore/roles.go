@@ -33,6 +33,17 @@ const (
 //User role in the application. User can have any role in the above list.
 //It is possible to one user may have more than one role.
 type roles struct {
-    roleType uint64
+    roleType rolebit
 }
 
+// Validate the rolebitset is valid.
+// Return true for a valid rolebitset and false otherwise.
+func (rl *roles)IsRoleBitsetValid() bool{
+    //Assuming there are no role bit present after rootadmin.
+    var maxRole rolebit = (ROOTADMIN << 1) - 1 //All 0xFs.
+    var minRole rolebit = ENDUSER
+    if rl.roleType < minRole || rl.roleType > maxRole {
+        return false
+    }
+    return true
+}

@@ -50,7 +50,7 @@ var (
                      %s  TEXT,
                      %s UNSIGNED BIG INT NOT NULL,
                      %s BIG INT NOT NULL,
-                     %s UNSIGNED INT NOT NULL,
+                     %s UNSIGNED BIG INT NOT NULL,
                      FOREIGN KEY(%s) REFERENCES %s(%s));`,
                      ORG_TABLE_NAME,
                      ORG_FIELD_UUIID,
@@ -59,7 +59,7 @@ var (
                      ORG_FIELD_STATUS,
                      ORG_FIELD_START_TIME,
                      ORG_FIELD_VALIDITY,
-                     ORG_FIELD_PARENT, ORG_TABLE_NAME, ORG_FIELD_UUIID,)
+                     ORG_FIELD_PARENT, ORG_TABLE_NAME, ORG_FIELD_UUIID)
     //Create a org entry in table Org
     orgCreate = fmt.Sprintf(`INSERT INTO %s 
                             (%s, %s, %s, %s, %s, %s) 
@@ -78,11 +78,18 @@ var (
     //Get the org/unit rows with specific org name. 
     orgGetName = fmt.Sprintf(`SELECT * FROM %s WHERE %s=(?)`,
                              ORG_TABLE_NAME, ORG_FIELD_NAME)
+    //Get org/unit rows with specific parent.
+    orgGetParent = fmt.Sprintf("SELECT * FROM %s WHERE %s=(?)",
+                                ORG_TABLE_NAME, ORG_FIELD_PARENT)
     //Get total number of org/unit entries in table.
     orgGetTotNum = fmt.Sprintf("SELECT COUNT(*) FROM %s", ORG_TABLE_NAME)
     //Delete org entry in table org table
     orgDeleteName = fmt.Sprintf("DELETE FROM %s WHERE %s=(?)", ORG_TABLE_NAME,
-                                ORG_FIELD_NAME))
+                                ORG_FIELD_NAME)
+    //Update org status and validitiy fields on a Name match.
+    orgUpdateName = fmt.Sprintf("UPDATE %s SET %s=(?), %s=(?) WHERE %s=(?)",
+                            ORG_TABLE_NAME, ORG_FIELD_STATUS,
+                            ORG_FIELD_VALIDITY, ORG_FIELD_NAME))
 
 func (org *sqlorg)createOrgTable(conn *sqlx.DB) error{
     var err error
@@ -239,6 +246,76 @@ func (org *sqlorg)getOrgEntryByUUID(conn *sqlx.DB) error{
         return err
     }
     org.dbToOrgRowXlate(conn, &row)
+    return nil
+}
+
+//Function to update a org entry and its children.
+//Update is very expensive operation as finding child involves DB lookup.
+//Only status and validity fields are allowed to update in org entry.
+//To modify any other fields, delete and readd orgentry.
+func (org *sqlorg)updateOrgEntryByName(conn *sqlx.DB) error {
+    var err error
+    log := logging.GetAppLoggerObj()
+    if len(org.name) == 0 {
+        log.Trace("Invalid/NULL org row name, Cannot update in org table")
+        return fmt.Errorf("%s",
+                        errorset.ERROR_TYPES[errorset.DB_RECORD_NOT_FOUND])
+    }
+    if org.IsOrgStatusValid() == false {
+        log.Trace("Cannot update the org record as invalid status bit provided")
+        return fmt.Errorf("%s",
+                        errorset.ERROR_TYPES[errorset.INVALID_PARAM])
+    }
+    //Get the record first to check if update is really needed.
+    var dborgRow = new(sqlorg)
+    dborgRow.name = org.name
+    err = dborgRow.getOrgEntryByName(conn)
+    if err != nil {
+        log.Trace("Failed to get record from DB table, Cannot update")
+        return err
+    }
+    var updateNeeded bool = false
+    if dborgRow.status != org.status {
+        dborgRow.status = org.status
+        updateNeeded = true
+    }
+    if dborgRow.validity != org.validity {
+        dborgRow.validity = org.validity
+        updateNeeded = true
+    }
+    if updateNeeded == false {
+        //No need to update the table entry as fields are upto date.
+        return nil
+    }
+    _, err = conn.Exec(orgUpdateName, dborgRow.status, dborgRow.validity,
+                        dborgRow.name)
+    if err != nil {
+        log.Trace("Failed to update org table row %s", dborgRow.name)
+        return err
+    }
+    rows := []dbOrg{}
+    err = conn.Select(&rows, orgGetParent, dborgRow.uuid)
+    if err != nil {
+        log.Trace("Failed to get children for a org row %s, cannot update",
+                    dborgRow.name)
+        fmt.Print(err)
+        return err
+    }
+    if len(rows) == 0 {
+        log.Trace("No child present for a org row %s. no update needed",
+                    dborgRow.name)
+        return nil
+    }
+    //Update its children with same information.
+    for _,row := range rows {
+        //At this point, we made update to parent. so child must need update.
+        _, err = conn.Exec(orgUpdateName, dborgRow.status, dborgRow.validity,
+                            row.Name)
+        if err != nil {
+            log.Trace("Failed to update children of %s", dborgRow.name)
+            return err
+        }
+    }
     return nil
 }
 

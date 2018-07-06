@@ -9,12 +9,18 @@ DEP := $(shell command -v dep  2> /dev/null)
 export GOPATH
 export GOSRCPATH
 export
-.PHONY : clean
+.PHONY : clean build debug
 
 all: build
 
 clean:
 	rm -rf $(GOBINPATH)/*
+
+debug: GCFLAGS = -gcflags=all="-N -l"
+
+debug:
+	@echo -e "\nCompiling DutyRoster app with gdb symbols..."
+	$(MAKE) build
 
 build:
 ifndef DEP
@@ -23,5 +29,5 @@ endif
 	-@(cd $(GOSRCPATH);$(DEP) status 2> /dev/null)
 	@echo -e "\n\tSet 'GOPATH' to '$(GOPATH)'"
 	@echo -e "\tRun 'dep ensure' in $(GOSRCPATH) to install missing third party packages\n"
-	$(GO) build -o $(GOOUTPUTBIN) $(GOSRCPATH)
+	$(GO) build $(GCFLAGS) -o $(GOOUTPUTBIN) $(GOSRCPATH)
 	@echo -e "\n\t**** RESULT : $$? : Build completed!!! ****\n\t**** Binary is at $$PWD/bin ****"

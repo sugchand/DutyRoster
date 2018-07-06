@@ -4,12 +4,12 @@
         "filepath": ""
     },
     "db": {
-        "driver": "sqlite3",
-        "dbpath": "/tmp/dutyroster.db",
-        "ipaddr": "",
-        "port": "",
-        "uname": "",
-        "pwd": "",
+        "driver": "postgres",
+        "dbname": "DutyRoster",
+        "ipaddr": "localhost",
+        "port": "5432",
+        "uname": "DutyRoster",
+        "pwd": "DutyRoster",
         "transport": "tcp"
     }
 }

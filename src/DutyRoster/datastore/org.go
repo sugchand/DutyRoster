@@ -33,6 +33,7 @@ type org struct {
     uuid syncParam.UUID
     //name of organization or division in organization.
     name string
+    address string
     //parent to track the hierarchy in the organization. It is possible an org
     // can have various levels in a hierarchy. The organization will have depth
     // 0, and divisions in the org might get numbers assigned from 1,2,3 and so

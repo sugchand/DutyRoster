@@ -101,7 +101,7 @@ func main() {
         syncObj.PanicApp("Exiting the application : %s", err.Error())
     }
     // Exit the main thread on Ctrl C 
-    fmt.Print("\n\n\n *** Press Ctrl+C to Exit *** \n\n\n")
+    fmt.Println("\n\n\n *** Press Ctrl+C to Exit *** \n\n\n")
     exitsignal := make(chan os.Signal, 1)
     signal.Notify(exitsignal, syscall.SIGINT, syscall.SIGTERM)
     //Add exit routine into waitgroup

@@ -17,8 +17,7 @@ package datastore
 import (
     "sync"
     "fmt"
-    "path/filepath"
-    _ "github.com/mattn/go-sqlite3"
+    _ "github.com/lib/pq"
     "github.com/jmoiron/sqlx"
     "DutyRoster/logging"
     "DutyRoster/config"
@@ -40,27 +39,38 @@ func (sqlds *sqlLiteDataStore)CreateDBConnection() error{
     var err error
     dbconfig := config.GetConfigInstance()
     dbDriver := dbconfig.DB.Driver
-    dbFile := dbconfig.DB.Dbpath
+    dbFile := dbconfig.DB.Dbname
+    dbUser := dbconfig.DB.Uname
+    dbPwd := dbconfig.DB.Pwd
+    dbIpaddr := dbconfig.DB.Ipaddr
+    dbPort := dbconfig.DB.Port
 
     //TODO :: Check if db connection present before creating.
     if (len(dbDriver) == 0 || len(dbFile) == 0) {
-        sqlds.dblogger.Error("Failed to start application, NULL DB driver/path")
+        sqlds.dblogger.Error("Failed to start application, NULL DB driver/name")
         return fmt.Errorf("%s",
             errorset.ERROR_TYPES[errorset.NULL_DB_CONFIG_PARAMS])
     }
-    if dbDriver != "sqlite3" {
-        //Only sqllite3 driver can be handled here.
+    if dbDriver != "postgres" {
+        //Only postgres driver can be handled here.
         sqlds.dblogger.Error("Failed to start application, Invalid driver :%s",
                              dbDriver)
         return fmt.Errorf("%s", errorset.ERROR_TYPES[errorset.INVALID_DB_DRIVER])
     }
-    dbFile, err = filepath.Abs(dbFile)
-    if err != nil {
-        sqlds.dblogger.Error("Failed to open DB file, %s", err.Error())
-        return err
+    if len(dbUser) == 0 || len(dbPwd) == 0 || len(dbIpaddr) == 0 ||
+        len(dbPort) == 0 {
+            //Configuration file doesnt have user/pwd credentials
+            sqlds.dblogger.Error(`Failed to start application, Invalid User
+                                credentials`)
+            return fmt.Errorf("%s",
+                           errorset.ERROR_TYPES[errorset.INVALID_DB_CREDENTIALS])
     }
+    dbparam := fmt.Sprintf(`host=%s port=%s user=%s password=%s
+                            dbname=%s sslmode=disable`,
+                            dbIpaddr, dbPort, dbUser, dbPwd,
+                            dbFile)
     var dbHandle *sqlx.DB
-    dbHandle, err = sqlx.Open(dbDriver, dbFile)
+    dbHandle, err = sqlx.Open(dbDriver, dbparam)
     if err != nil {
         sqlds.dblogger.Error("Failed to connect DB %s", err.Error())
         return err
@@ -72,9 +82,9 @@ func (sqlds *sqlLiteDataStore)CreateDBConnection() error{
 //Create all the sqllite tables for DutyRoster application.
 func (sqlds *sqlLiteDataStore)CreateDataStoreTables() error {
     //Create Role table.
+
     roletable := new(sqlroles)
     roletable.createRoleTable(sqlds.DBConn)
-    //Create Org table
     orgtable := new(sqlorg)
     orgtable.createOrgTable(sqlds.DBConn)
     return nil

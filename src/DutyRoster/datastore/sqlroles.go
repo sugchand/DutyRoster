@@ -1,8 +1,22 @@
+// Copyright 2018 Sugesh Chandran
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package datastore
 
 import (
     "fmt"
-    _ "github.com/mattn/go-sqlite3"
+    _ "github.com/lib/pq"
     "github.com/jmoiron/sqlx"
     "DutyRoster/errorset"
     "DutyRoster/logging"
@@ -23,18 +37,20 @@ var (
     //Check if table is exist in the DB
     roletableExist = fmt.Sprintf("SELECT 1 FROM %s LIMIT 1;", ROLE_TABLE_NAME_STR)
     //Create a table roles
-    roleschema = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s UNSIGNED BIG INT NOT NULL PRIMARY KEY);",
-                    ROLE_TABLE_NAME_STR, ROLE_TYPE_NAME_STR)
+    roleschema = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
+                            (%s bigint NOT NULL PRIMARY KEY CHECK(%s > 0));`,
+                    ROLE_TABLE_NAME_STR, ROLE_TYPE_NAME_STR,
+                    ROLE_TYPE_NAME_STR)
     //Create a role entry in table roles
-    roleCreate = fmt.Sprintf("INSERT INTO %s (%s) VALUES (?)", ROLE_TABLE_NAME_STR,
+    roleCreate = fmt.Sprintf("INSERT INTO %s (%s) VALUES ($1)", ROLE_TABLE_NAME_STR,
                             ROLE_TYPE_NAME_STR)
     //Get the roles row for specific roletype
-    roleGet = fmt.Sprintf("SELECT * FROM %s WHERE %s=(?)", ROLE_TABLE_NAME_STR,
+    roleGet = fmt.Sprintf("SELECT * FROM %s WHERE %s=($1)", ROLE_TABLE_NAME_STR,
                         ROLE_TYPE_NAME_STR)
     //Get total number of role entries in table.
     roleGetNum = fmt.Sprintf("SELECT COUNT(*) FROM %s", ROLE_TABLE_NAME_STR)
     //Delete role entry in table roles.
-    roleDelete = fmt.Sprintf("DELETE FROM %s WHERE %s=(?)", ROLE_TABLE_NAME_STR,
+    roleDelete = fmt.Sprintf("DELETE FROM %s WHERE %s=($1)", ROLE_TABLE_NAME_STR,
                         ROLE_TYPE_NAME_STR)
 )
 
@@ -48,7 +64,7 @@ func (rl *sqlroles)createRoleTable(conn *sqlx.DB) error{
     }
     _, err = conn.Exec(roleschema)
     if err != nil {
-        log.Error("Failed to create role table %s", err)
+        log.Error("Failed to create role table: %s", err)
         return fmt.Errorf("%s",
                         errorset.ERROR_TYPES[errorset.DB_TABLE_CREATE_FAILED])
     }

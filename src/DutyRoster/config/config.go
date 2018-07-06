@@ -34,7 +34,7 @@ type Config struct {
         //Name of DB driver, Only SQLLITE is supported now.
         Driver string `json:"driver"`
         //Path of DB to use in application., eg: /tmp/test.db
-        Dbpath string `json:"dbpath"`
+        Dbname string `json:"dbname"`
         //Ip address of Host where DB server is running.
         Ipaddr string `json:"ipaddr"`
         //Port at which DB server is listening for incoming connections.

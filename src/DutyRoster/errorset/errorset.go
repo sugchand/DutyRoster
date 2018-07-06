@@ -30,9 +30,13 @@ const (
     TRY_AGAIN
     NULL_DB_CONFIG_PARAMS
     INVALID_DB_DRIVER
+    INVALID_DB_CREDENTIALS
     DB_TABLE_CREATE_FAILED
     DB_TRANSACTION_FAILED
     DB_RECORD_NOT_FOUND
+    DB_PARENT_RECORD_NOT_FOUND
+    DB_RECORD_NOT_UNIQUE
+    DB_RECORD_RELATION_ERROR
 )
 
 var ERROR_TYPES = []string{
@@ -41,12 +45,20 @@ var ERROR_TYPES = []string{
     //TRY_AGAIN
     "Operation failed, Try again.",
     //NULL_DB_CONFIG_PARAMS
-    "DB params on the configuration is empty/invalid",
+    "DB params in the configuration is empty/invalid",
     //INVALID_DB_DRIVER
     "INVALID DB driver in configuration",
+    //INVALID_DB_CREDENTIALS
+    "Invalid DB credentails in the configuration",
     //DB_TABLE_CREATE_FAILED
     "Failed to create table in DB",
     //DB_TRANSACTION_FAILED
     "Failed to perform transaction on DB",
     //DB_RECORD_NOT_FOUND
-    "Record not found in DB"}
+    "Record not found in DB",
+    //DB_PARENT_RECORD_NOT_FOUND
+    "Parent record is not found in DB",
+    //DB_RECORD_NOT_UNIQUE
+    "More than one record found in DB",
+    //DB_RECORD_RELATION_ERROR
+    "Error in DB record relation/no valid relation found"}

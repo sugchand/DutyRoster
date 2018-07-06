@@ -17,21 +17,60 @@ package syncParam
 import (
     "crypto/rand"
     "fmt"
-    "io"
+    "bytes"
 )
 
-type UUID string
+type UUID [16]byte
 
 // newUUID generates a random UUID according to RFC 4122
+func NewUUIDString() (string, error) {
+    uuid, err := NewUUID()
+    if err != nil {
+        return "", nil
+    }
+    return fmt.Sprintf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+        uuid[0],uuid[1],uuid[2],uuid[3],
+        uuid[4],uuid[5],uuid[6],uuid[7],
+        uuid[8],uuid[9],uuid[10],uuid[11],
+        uuid[12],uuid[13],uuid[14],uuid[15]), nil
+}
+
 func NewUUID() (UUID, error) {
-    uuid := make([]byte, 16)
-    n, err := io.ReadFull(rand.Reader, uuid)
+    uuid := new(UUID)
+    n, err := rand.Read(uuid[:])
     if n != len(uuid) || err != nil {
-        return "", err
+        return UUID{}, err
     }
     // variant bits; see section 4.1.1
     uuid[8] = uuid[8]&^0xc0 | 0x80
     // version 4 (pseudo-random); see section 4.1.3
     uuid[6] = uuid[6]&^0xf0 | 0x40
-    return UUID(fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])), nil
+    return *uuid,nil
+}
+
+func UUIDtoString(uuid UUID) (string) {
+    return fmt.Sprintf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+        uuid[0],uuid[1],uuid[2],uuid[3],
+        uuid[4],uuid[5],uuid[6],uuid[7],
+        uuid[8],uuid[9],uuid[10],uuid[11],
+        uuid[12],uuid[13],uuid[14],uuid[15])
+}
+
+func StringtoUUID(uuidStr string) UUID {
+    var uuid = new(UUID)
+    fmt.Sscanf(uuidStr, "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+        &uuid[0],&uuid[1],&uuid[2],&uuid[3],
+        &uuid[4],&uuid[5],&uuid[6],&uuid[7],
+        &uuid[8],&uuid[9],&uuid[10],&uuid[11],
+        &uuid[12],&uuid[13], &uuid[14],&uuid[15])
+    return *uuid
+}
+
+//Returns True when uuid is empty and false otherwise.
+func IsUUIDEmpty(uuid UUID) bool{
+    zerouuid := new(UUID)
+    if bytes.Equal(zerouuid[:], uuid[:]) {
+        return true
+    }
+    return false
 }

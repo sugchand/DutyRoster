@@ -17,6 +17,7 @@ package datastore
 import (
     "sync"
     "fmt"
+    "database/sql"
     _ "github.com/lib/pq"
     "github.com/jmoiron/sqlx"
     "DutyRoster/logging"
@@ -24,18 +25,18 @@ import (
     "DutyRoster/errorset"
 )
 
-type sqlLiteDataStore struct {
+type postgreSqlDataStore struct {
     dblogger logging.LoggingInterface
     DBConn *sqlx.DB
 }
 
 var dbOnce sync.Once
-var sqlObj = new(sqlLiteDataStore)
+var sqlObj = new(postgreSqlDataStore)
 
 //Create a sql connection and store in the datastore object.
 // Return '0' on success and errorcode otherwise.
 // It is advised to make single connection in entire application.
-func (sqlds *sqlLiteDataStore)CreateDBConnection() error{
+func (sqlds *postgreSqlDataStore)CreateDBConnection() error{
     var err error
     dbconfig := config.GetConfigInstance()
     dbDriver := dbconfig.DB.Driver
@@ -79,23 +80,142 @@ func (sqlds *sqlLiteDataStore)CreateDBConnection() error{
     return nil
 }
 
-//Create all the sqllite tables for DutyRoster application.
-func (sqlds *sqlLiteDataStore)CreateDataStoreTables() error {
+//Create all the postgresql tables for DutyRoster application.
+func (sqlds *postgreSqlDataStore)CreateDataStoreTables() error {
     //Create Role table.
 
     roletable := new(sqlroles)
-    roletable.createRoleTable(sqlds.DBConn)
+    roletable.createRoleTable(sqlds, sqlds.DBConn)
     orgtable := new(sqlorg)
-    orgtable.createOrgTable(sqlds.DBConn)
+    orgtable.createOrgTable(sqlds, sqlds.DBConn)
+    usertable := new(sqlUsers)
+    usertable.createUserTable(sqlds, sqlds.DBConn)
     return nil
+}
+
+func (sqlds *postgreSqlDataStore)CreateUserAccount(user *Users) error {
+    usertable := new(sqlUsers)
+    usertable.Users = *user
+    Tx := sqlds.DBConn.MustBegin()
+    err := usertable.createUserEntry(sqlds, Tx)
+    if err != nil {
+        Tx.Rollback()
+        return err
+    }
+    Tx.Commit()
+    return nil
+}
+
+func (sqlds *postgreSqlDataStore)GetUserAccount(user *Users) error {
+    usertable := new(sqlUsers)
+    usertable.Users = *user
+    err := usertable.getUserwithIDPwd(sqlds, sqlds.DBConn)
+    return err
+}
+
+func (sqlds *postgreSqlDataStore)DeleteUserAccount(user *Users) error {
+    usertable := new(sqlUsers)
+    usertable.Users = *user
+    usertable.deleteUserEntry(sqlds, sqlds.DBConn)
+    return nil
+}
+
+func (sqlds *postgreSqlDataStore)UpdateUserAccount(user *Users) error {
+    usertable := new(sqlUsers)
+    usertable.Users = *user
+    Tx := sqlds.DBConn.MustBegin()
+    err := usertable.createUserEntry(sqlds, Tx)
+    if err != nil {
+        Tx.Rollback()
+        return err
+    }
+    Tx.Commit()
+    return nil
+}
+
+// Exec operation on a postgreSQL DB can be either transactional or non-
+// transactional. Helper function to find right exec function based on dbhandle
+//type. Application not allowed to invoke db backend 'Exec' function. Instead
+// it must use this function to invoke it in the specific context.
+type sqlExecFn func (string, ...interface{}) (sql.Result, error)
+func (sqlds *postgreSqlDataStore)getDBExecFunction(
+                        handle interface{}) (sqlExecFn, error) {
+    var dbhandle *sqlx.DB
+    var dbtxhandle *sqlx.Tx
+    var handleOk bool
+    var execPtr sqlExecFn
+    dbhandle, handleOk = handle.(*sqlx.DB)
+    if handleOk {
+        execPtr = dbhandle.Exec
+    } else if dbtxhandle, handleOk = handle.(*sqlx.Tx); handleOk {
+        execPtr = dbtxhandle.Exec
+    } else {
+        sqlds.dblogger.Error(
+            "Failed to execute delete operation , Invalid DB handle")
+        return nil, fmt.Errorf("%s",
+                    errorset.ERROR_TYPES[errorset.INVALID_PARAM])
+
+    }
+    return execPtr, nil
+}
+
+// Get operation on a postgreSQL DB can be either transactional or non-
+// transactional. Helper function to find right Get function based on dbhandle
+//type. Application not allowed to invoke db backend 'Get' function. Instead
+// it must use this function to invoke it in the specific context.
+type sqlGetFn func (interface{}, string, ...interface{}) error
+func (sqlds *postgreSqlDataStore)getDBGetFunction(
+                        handle interface{}) (sqlGetFn, error) {
+    var dbhandle *sqlx.DB
+    var dbtxhandle *sqlx.Tx
+    var handleOk bool
+    var getPtr sqlGetFn
+    dbhandle, handleOk = handle.(*sqlx.DB)
+    if handleOk {
+        getPtr = dbhandle.Get
+    } else if dbtxhandle, handleOk = handle.(*sqlx.Tx); handleOk {
+        getPtr = dbtxhandle.Get
+    } else {
+        sqlds.dblogger.Error(
+            "Failed to execute delete operation , Invalid DB handle")
+        return nil, fmt.Errorf("%s",
+                    errorset.ERROR_TYPES[errorset.INVALID_PARAM])
+
+    }
+    return getPtr, nil
+}
+
+// Select operation on a postgreSQL DB can be either transactional or non-
+// transactional. Helper function to find right Select function based on dbhandle
+//type. Application not allowed to invoke db backend 'Select' function. Instead
+// it must use this function to invoke it in the specific context.
+type sqlSelectFn func (interface{}, string, ...interface{}) error
+func (sqlds *postgreSqlDataStore)getDBSelectFunction(
+                        handle interface{}) (sqlSelectFn, error) {
+    var dbhandle *sqlx.DB
+    var dbtxhandle *sqlx.Tx
+    var handleOk bool
+    var selectPtr sqlSelectFn
+    dbhandle, handleOk = handle.(*sqlx.DB)
+    if handleOk {
+        selectPtr = dbhandle.Get
+    } else if dbtxhandle, handleOk = handle.(*sqlx.Tx); handleOk {
+        selectPtr = dbtxhandle.Get
+    } else {
+        sqlds.dblogger.Error(
+            "Failed to execute delete operation , Invalid DB handle")
+        return nil, fmt.Errorf("%s",
+                    errorset.ERROR_TYPES[errorset.INVALID_PARAM])
+    }
+    return selectPtr, nil
 }
 
 // Only one SQL datastore object can be present in the system as connection
 //pool can be handled in side the database connection itself
-func getSqlLiteDataStoreObj() *sqlLiteDataStore {
+func getPSQLDataStoreObj() *postgreSqlDataStore {
     dbOnce.Do(func() {
         sqlObj.dblogger = logging.GetAppLoggerObj()
-        sqlObj.dblogger.Trace("SQLLite DB Object is created successfully")
+        sqlObj.dblogger.Trace("PostgreSql DB Object is created successfully")
         return
     })
     return sqlObj

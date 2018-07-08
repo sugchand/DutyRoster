@@ -24,4 +24,18 @@ type dataStoreInterface interface {
     // Create all the relevant tables/sessions that are needed for datastore
     //implementation.
     CreateDataStoreTables() error
+
+    //***** User operations *****
+    //Create the user account row in the DB.
+    CreateUserAccount(*Users) error
+    //Get a user account, the userID and pwd must be present in users
+    // All other fields are populated by the function by reading from DB.
+    GetUserAccount(*Users) error
+    //Delete User account with 'userid' row in the DB,
+    DeleteUserAccount(*Users) error
+    //Update User account on 'Userid'.
+    //Only emailid, hashpwd, mobileno, validity and status are allowed to
+    //modify. All these fields must populate in the 'users' even if
+    // update is not required.Otherwise the null values get written to DB.
+    UpdateUserAccount(*Users) error
 }

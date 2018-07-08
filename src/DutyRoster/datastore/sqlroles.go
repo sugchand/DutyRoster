@@ -17,7 +17,6 @@ package datastore
 import (
     "fmt"
     _ "github.com/lib/pq"
-    "github.com/jmoiron/sqlx"
     "DutyRoster/errorset"
     "DutyRoster/logging"
 )
@@ -54,15 +53,21 @@ var (
                         ROLE_TYPE_NAME_STR)
 )
 
-func (rl *sqlroles)createRoleTable(conn *sqlx.DB) error{
-    var err error
+func (rl *sqlroles)createRoleTable(sqlds *postgreSqlDataStore,
+                                     handle interface{}) error{
     log := logging.GetAppLoggerObj()
-    _, err = conn.Exec(roletableExist)
+    execPtr, err := sqlds.getDBExecFunction(handle)
+    if err != nil {
+        log.Error("Failed to create role table, invalid DB handle err : %s",
+                    err)
+        return err
+    }
+    _, err = execPtr(roletableExist)
     if err == nil {
         log.Info("Role table is already exist in the system. ")
         return nil
     }
-    _, err = conn.Exec(roleschema)
+    _, err = execPtr(roleschema)
     if err != nil {
         log.Error("Failed to create role table: %s", err)
         return fmt.Errorf("%s",
@@ -72,9 +77,15 @@ func (rl *sqlroles)createRoleTable(conn *sqlx.DB) error{
 }
 
 //Function to create a role entry in table if not exist.
-func (rl *sqlroles)createRoleEntry(conn *sqlx.DB) error {
-    var err error
+func (rl *sqlroles)createRoleEntry(sqlds *postgreSqlDataStore,
+                                     handle interface{}) error {
     log := logging.GetAppLoggerObj()
+    execPtr, err := sqlds.getDBExecFunction(handle)
+    if err != nil {
+        log.Error("Failed to create role entry %d, invalid DB handle err : %s",
+            rl.roleType, err)
+        return err
+    }
     //Check if roleBit is valid before creating it in DB
     if rl.IsRoleBitsetValid() == false {
         log.Error("Invalid role bit, cannot create entry in role table")
@@ -84,13 +95,13 @@ func (rl *sqlroles)createRoleEntry(conn *sqlx.DB) error {
     //role table has only one entry and its the primary key, duplication of
     // entry will cause error in DB insert. We are checking if entry is present
     // in DB to avoid doing trial and error.
-    if rl.isRoleEntryPresentInTable(conn) == true {
+    if rl.isRoleEntryPresentInTable(sqlds, handle) == true {
         //Role entry is present, no need to create
         log.Trace("No need to create role entry %d as its present in DB",
                     rl.roleType)
         return nil
     }
-    _, err = conn.Exec(roleCreate, rl.roleType)
+    _, err = execPtr(roleCreate, rl.roleType)
     if err != nil {
         log.Trace("Failed to create role table entry %d", rl.roleType)
         return err
@@ -99,12 +110,17 @@ func (rl *sqlroles)createRoleEntry(conn *sqlx.DB) error {
 }
 
 //Return TRUE if a role entry present in table and false otherwise.
-func (rl *sqlroles)isRoleEntryPresentInTable(conn *sqlx.DB) (bool) {
-    var err error
+func (rl *sqlroles)isRoleEntryPresentInTable(sqlds *postgreSqlDataStore,
+                                     handle interface{}) (bool) {
     log := logging.GetAppLoggerObj()
-
+    getPtr, err := sqlds.getDBGetFunction(handle)
+    if err != nil {
+        log.Error("invalid DB handle to work on role entry %d err : %s",
+                   rl.roleType, err)
+        return false
+    }
     var row uint64
-    err = conn.Get(&row, roleGet, rl.roleType)
+    err = getPtr(&row, roleGet, rl.roleType)
     if err != nil {
         log.Trace("Failed to get the role entry %d from role table",
                     rl.roleType)
@@ -114,11 +130,17 @@ func (rl *sqlroles)isRoleEntryPresentInTable(conn *sqlx.DB) (bool) {
 }
 
 //Function to get total number of entries that present in role table.
-func (rl *sqlroles)getTotalRoleEntriesCnt(conn *sqlx.DB) (uint64, error) {
-    var err error
+func (rl *sqlroles)getTotalRoleEntriesCnt(sqlds *postgreSqlDataStore,
+                                     handle interface{}) (uint64, error) {
     log := logging.GetAppLoggerObj()
     var totCnt uint64
-    err = conn.Get(&totCnt, roleGetNum)
+    getPtr, err := sqlds.getDBGetFunction(handle)
+    if err != nil {
+        log.Error("invalid DB handle to work on role entry %d err : %s",
+                   rl.roleType, err)
+        return 0, err
+    }
+    err = getPtr(&totCnt, roleGetNum)
     if err != nil {
         log.Error("Failed to get total number of records in roletable")
         return 0, err
@@ -127,10 +149,16 @@ func (rl *sqlroles)getTotalRoleEntriesCnt(conn *sqlx.DB) (uint64, error) {
 }
 
 //function to delete a roleentry from the role table.
-func (rl *sqlroles)delRoleEntry(conn *sqlx.DB) error {
-    var err error
+func (rl *sqlroles)delRoleEntry(sqlds *postgreSqlDataStore,
+                                     handle interface{}) error {
     log := logging.GetAppLoggerObj()
-    _, err = conn.Exec(roleDelete, rl.roleType)
+    execPtr, err := sqlds.getDBExecFunction(handle)
+    if err != nil {
+        log.Error("Failed to create role table, invalid DB handle err : %s",
+                    err)
+        return err
+    }
+    _, err = execPtr(roleDelete, rl.roleType)
     if err != nil {
         log.Trace("Failed to delete the role entry from table")
         return err

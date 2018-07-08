@@ -23,5 +23,5 @@ import (
 // following function to return right datastore object.
 func GetDataStoreObj() dataStoreInterface {
     // We use sqllite as DB driver
-    return getSqlLiteDataStoreObj()
+    return getPSQLDataStoreObj()
 }
